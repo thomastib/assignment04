@@ -1,26 +1,38 @@
 ---
-title: "index"
-format: html
-editor: visual
+title: "Data Science for Public Policy"
+subtitle: "Assignment 04: Data Visualization, Quarto, and Git"
+author: "Juliette Taylor - jmt333, Thomas Tiberghien Alvarez - tt791"
+format: 
+  html:
+    code-line-numbers: true
+execute: 
+  warning: false
+urlcolor: blue
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+\vspace{0.1in}
 
 ```{r}
-1 + 1
+#| output: false
+library(tidyverse)
+library(knitr)
 ```
 
-You can add options to executable code like this
 
+The code below is used to convert the data zip files into csvs that can be ingested by R. To use it, download the zip files you want into a directory called "data" and then run the code below. The csvs will appear in a directory called "csvs". Make sure to modify the .gitignore file to exclude those two directories from tracking.
 ```{r}
-#| echo: false
-2 * 2
+zip_dir <- "data/"
+csv_dir <- "csvs/"
+
+zip_files <- paste0(zip_dir, list.files(zip_dir))
+
+for (x in zip_files) {
+        unzip(x, exdir = csv_dir)
+}
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+## Plot 1: Yearly changes
+
+The goal of this plot is to simply see how ridership has changed throughout the last 10 years. The output graph is relatively simple, but in order to obtain the data, several data sources had to be wrangled together. 
+
+
