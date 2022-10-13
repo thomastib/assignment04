@@ -65,3 +65,31 @@ ggplot(data = minutes) +
 ```
 
 
+## Plot 4: Station usage
+Top station was NA with 12,950 counts
+
+```{r}
+
+#data_sept_2022 <- load_cabi_data("202209") %>% janitor::clean_names()
+station_counts <- data_sept_2022 %>%
+  filter(!is.na(start_station_id)) %>% 
+  group_by(station_id = start_station_id) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>%
+  slice(1:10) %>%
+  ungroup() 
+
+labels <- data_sept_2022 %>% 
+  filter(!is.na(start_station_id)) %>% 
+  select(station_id = start_station_id, station_name = start_station_name) %>% 
+  unique()
+
+station_counts <- inner_join(station_counts, labels, by = "station_id")
+
+ggplot(data = station_counts) +
+  geom_col(mapping = aes(x = count, y = station_name), orientation = "y", fill ="red") +
+  scale_y_discrete(limits = station_counts$station_name) +
+  labs(title = "Most used stations") +
+
+```
+
