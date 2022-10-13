@@ -42,3 +42,26 @@ load_cabi_data <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
 
 The goal of this plot is to simply see how ridership has changed throughout the last 10 years. The output graph is relatively simple, but in order to obtain the data, several data sources had to be wrangled together. For simplicity, only data from May will be used. 
 
+
+
+## Plot 2: Ridership throughout the day
+
+```{r}
+
+#data_sept_2022 <- load_cabi_data("202209") %>% janitor::clean_names()
+minutes <- data_sept_2022 %>%
+        group_by(hour = hour(started_at), minute = minute(started_at)) %>% 
+        summarise(count = n()) %>% 
+        ungroup() %>% 
+        mutate(hour_minute = 60*hour+minute)
+
+ggplot(data = minutes) +
+        geom_col(mapping = aes(x = hour_minute, y = count), 
+                 colour = "red") +
+        coord_polar() + 
+        labs(title = "Ridership throughout the day")
+
+#axis label as hour vs minutes
+```
+
+
