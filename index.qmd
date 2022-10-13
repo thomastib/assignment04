@@ -23,17 +23,17 @@ library(purrr)
 
 The code below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in https://s3.amazonaws.com/capitalbikeshare-data/index.html
 ```{r}
-cabi_csv <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
+load_cabi_data <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
         url <- str_glue("https://s3.amazonaws.com/capitalbikeshare-data/{period}-capitalbikeshare-tripdata.zip")
         download.file(url, destfile = str_glue(paste0(zip_dir,"{period}-cabi-tripdata.zip")))
         zip_files <- paste0(zip_dir, list.files(zip_dir))
         for (x in zip_files) {
                 unzip(x, exdir = csv_dir)
         }
-        csv_files <- paste0(csv_dir, list.files(csv_dir))
+        csv_files <- paste0(csv_dir, list.files(csv_dir, pattern = ".csv"))
         output <- map(csv_files, read_csv)
-        file.remove(zip_files)
-        file.remove(csv_files)
+        unlink(paste0(zip_dir,"*"), recursive = TRUE)
+        unlink(paste0(csv_dir,"*"), recursive = TRUE)
         return(bind_rows(output))
 }
 ```
