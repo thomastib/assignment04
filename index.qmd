@@ -18,6 +18,7 @@ library(tidyverse)
 library(knitr)
 library(lubridate)
 library(purrr)
+library(stringr)
 ```
 
 
@@ -31,16 +32,48 @@ load_cabi_data <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
                 unzip(x, exdir = csv_dir)
         }
         csv_files <- paste0(csv_dir, list.files(csv_dir, pattern = ".csv"))
-        output <- map(csv_files, read_csv)
+        output <- bind_rows(map(csv_files, read_csv)) %>% janitor::clean_names()
         unlink(paste0(zip_dir,"*"), recursive = TRUE)
         unlink(paste0(csv_dir,"*"), recursive = TRUE)
-        return(bind_rows(output))
+        return(output)
 }
 ```
 
 ## Plot 1: Yearly changes
 
-The goal of this plot is to simply see how ridership has changed throughout the last 10 years. The output graph is relatively simple, but in order to obtain the data, several data sources had to be wrangled together. For simplicity, only data from May will be used. 
+The goal of this plot is to simply see how ridership has changed throughout the last 10 years. The output graph is relatively simple, but in order to obtain the data, several data sources had to be wrangled together. 
+
+```{r}
+# make function that wraps around the load_cabi_data function. I want to get a total of all monthly rides since 2012, but the data past 2018 requires a different setup
+
+# for 2018+
+# first make list of periods to get data from for each year
+# loop through these periods to get data, and then simply obtain the count for this
+# Do a pause between each loop
+# add all these counts to a final tibble
+monthly_rides_2018 <- tibble(year = 2018, month = 1:12, counts = integer(12)) %>% 
+        mutate(str_month = str_pad(month, 2, pad = "0")) %>% 
+        mutate(period = paste0(year, str_month)) %>% 
+        select(-str_month)
+
+for (i in monthly_rides_2018$period) {
+        data <- load_cabi_data(i)
+        monthly_rides_2018 <- monthly_rides_2018 %>% 
+                mutate(counts = if_else(period == i, nrow(data), counts))
+}
+
+
+# Function to count monthly rides for 2011-2017
+by_month <- function(data, year) {
+        output <- data %>% 
+                janitor::clean_names() %>% 
+                group_by(month = month(start_date)) %>% 
+                summarise(monthly_count = n()) %>% 
+                ungroup() %>% 
+                mutate(year = year)
+        return(output)
+}
+```
 
 
 
