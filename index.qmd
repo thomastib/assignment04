@@ -16,23 +16,29 @@ urlcolor: blue
 #| output: false
 library(tidyverse)
 library(knitr)
+library(lubridate)
+library(purrr)
 ```
 
 
-The code below is used to convert the data zip files into csvs that can be ingested by R. To use it, download the zip files you want into a directory called "data" and then run the code below. The csvs will appear in a directory called "csvs". Make sure to modify the .gitignore file to exclude those two directories from tracking.
+The code below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in https://s3.amazonaws.com/capitalbikeshare-data/index.html
 ```{r}
-zip_dir <- "data/"
-csv_dir <- "csvs/"
-
-zip_files <- paste0(zip_dir, list.files(zip_dir))
-
-for (x in zip_files) {
-        unzip(x, exdir = csv_dir)
+cabi_csv <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
+        url <- str_glue("https://s3.amazonaws.com/capitalbikeshare-data/{period}-capitalbikeshare-tripdata.zip")
+        download.file(url, destfile = str_glue(paste0(zip_dir,"{period}-cabi-tripdata.zip")))
+        zip_files <- paste0(zip_dir, list.files(zip_dir))
+        for (x in zip_files) {
+                unzip(x, exdir = csv_dir)
+        }
+        csv_files <- paste0(csv_dir, list.files(csv_dir))
+        output <- map(csv_files, read_csv)
+        file.remove(zip_files)
+        file.remove(csv_files)
+        return(bind_rows(output))
 }
 ```
 
 ## Plot 1: Yearly changes
 
-The goal of this plot is to simply see how ridership has changed throughout the last 10 years. The output graph is relatively simple, but in order to obtain the data, several data sources had to be wrangled together. 
-
+The goal of this plot is to simply see how ridership has changed throughout the last 10 years. The output graph is relatively simple, but in order to obtain the data, several data sources had to be wrangled together. For simplicity, only data from May will be used. 
 
