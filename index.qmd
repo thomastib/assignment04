@@ -7,11 +7,15 @@ format:
     code-line-numbers: true
 execute: 
   warning: false
+self-contained: true
 urlcolor: blue
 ---
 
 \vspace{0.1in}
 
+The goal of this analysis is to generate visualizations regarding the usage of the Capital Bikeshare (CaBi) system in Washington DC and draw some conclusions that can be useful in generating policy changes. The data comes from CaBi's own [System data](https://ride.capitalbikeshare.com/system-data).
+
+### Setup
 ```{r}
 #| output: false
 #| warning: false
@@ -26,7 +30,7 @@ library(tigris)
 library(sf)
 ```
 
-The function below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in https://s3.amazonaws.com/capitalbikeshare-data/index.html
+The function below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in the Capital Bikeshare [downloadable files](https://s3.amazonaws.com/capitalbikeshare-data/index.html)
 
 ```{r}
 #| warning: false
@@ -163,9 +167,7 @@ ggplot() +
 
 ### Interpretation
 
-
 On first impression, the plot shows some trends that are obvious, such as telling us that the winters will have fewer rides, or that ridership has increased since 2010, when there were likely fewer stations and bikes to go around, and residents of Washington did not know about the availability of the Capital Bikeshare program. We can also see the dip in ridership in 2020 as Covid hit and people started staying inside more. Something that is surprising though, is that peak ridership was actually in 2017.
-
 
 # Plot 2: Ridership throughout the day
 
@@ -196,17 +198,20 @@ ggplot(data = minutes) +
 
 ```
 
-### Intepretation 
+### Intepretation
 
-This graph is relatively unsurprising in highlighting very low usage of bikes during the night, meaning between 10pm and 7am. Bike usage picks up considerably circa 7am, corresponding to human flows to work places or places of study. Usage then remains quite steady throughout the day until around 4pm when it starts to pick up significantly for rush hour. Peak times are without a doubt between 4pm and 7pm. Implications for policy may be ensuring any daily bike maintenance happens before these times. 
-
+This graph is relatively unsurprising in highlighting very low usage of bikes during the night, meaning between 10pm and 7am. Bike usage picks up considerably circa 7am, corresponding to human flows to work places or places of study. Usage then remains quite steady throughout the day until around 4pm when it starts to pick up significantly for rush hour. Peak times are without a doubt between 4pm and 7pm. Implications for policy may be ensuring any daily bike maintenance happens before these times.
 
 \newpage
+
 # Plot 3: User types
+
 The goal of this plot is to find how the type of user differs geographically throughout the city. In order to do this, we use the start station location and compare it with a map of Washington DC, colouring it based on which type of user uses it most. This analysis uses the data from August 2022.
 
 ### Obtaining the data
+
 We need 2 different datasets here: one for the aggregated data by station, and one that has the geospatial data for DC.
+
 ```{r}
 #| output: false
 #| warning: false
@@ -226,9 +231,10 @@ dc_map <- states(cb = TRUE, progress_bar = FALSE) %>%
         filter(STUSPS == "DC")
 ```
 
-
 ### Generating the plot
+
 The code below generates the final plot
+
 ```{r}
 #| warning: false
 ggplot() +
@@ -249,14 +255,16 @@ ggplot() +
         
 ```
 
-
 ### Interpretation
-What is interesting about this plot is that member users, the ones who have a subscription to Capital Bikeshares and don't just pick up bikes on demand, make up the bulk of users in the downtown areas. It is only on the peripheries that casual users make up the majority of users. Maybe this has to do with how long the stations have been there. As CaBi expands outward, it takes a while for users to start using the bikes more consistently and seeing the value of getting a membership. Further analysis could also be done to see how often tourists use this service. If they are casual members then the downtown areas should see a few more casual-dominated stations, and this does seem to be the case around the Mall. 
+
+What is interesting about this plot is that member users, the ones who have a subscription to Capital Bikeshares and don't just pick up bikes on demand, make up the bulk of users in the downtown areas. It is only on the peripheries that casual users make up the majority of users. Maybe this has to do with how long the stations have been there. As CaBi expands outward, it takes a while for users to start using the bikes more consistently and seeing the value of getting a membership. Further analysis could also be done to see how often tourists use this service. If they are casual members then the downtown areas should see a few more casual-dominated stations, and this does seem to be the case around the Mall.
 
 \newpage
-# Plot 4: Station usage
-Top station was NA with 12,950 counts
 
+# Plot 4: Station usage
+
+Top station was NA with 12,950 counts
+### Obtaining the data
 ```{r}
 #| output: false
 #| warning: false
@@ -293,7 +301,6 @@ ggplot(data = plot_data) +
 
 ```
 
-### Interpretation 
+### Interpretation
 
-Unsurprisingly, the top Capital Bikeshare stations correspond to areas of strategic importance in DC - transport hubs (Union Station), retail streets (M St), office buildings (Dupont Circle), and entertainment areas (14th St). It would be worth investigating whether these stations are consistently empty, in which case it might be worthwhile to add bikes to these particular locations. 
-Interestingly, before filtering, the top station was NA with 12,950 counts. This, along with the lack of clarity around the meaning of docked bikes, poses questions about Capital Bikeshare's data set. 
+Unsurprisingly, the top Capital Bikeshare stations correspond to areas of strategic importance in DC - transport hubs (Union Station), retail streets (M St), office buildings (Dupont Circle), and entertainment areas (14th St). It would be worth investigating whether these stations are consistently empty, in which case it might be worthwhile to add bikes to these particular locations. Interestingly, before filtering, the top station was NA with 12,950 counts. This, along with the lack of clarity around the meaning of docked bikes, poses questions about Capital Bikeshare's data set.
