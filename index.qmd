@@ -19,11 +19,22 @@ library(knitr)
 library(lubridate)
 library(purrr)
 library(stringr)
+library(scales)
+library(tigris)
+library(sf)
 ```
 
 
-The code below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in https://s3.amazonaws.com/capitalbikeshare-data/index.html
+The function below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in https://s3.amazonaws.com/capitalbikeshare-data/index.html
 ```{r}
+#' Load cabi data
+#'
+#' @param period The period of time to load data for, as a string. Should match the zip files in the cabi website
+#' @param zip_dir The directory into which zip files will be downloaded. Should be created before running the function
+#' @param csv_dir The directory into which csv files will be generated. Should be created before running the function
+#'
+#' @return A tibble with all of the data downloaded from the CaBi website for that period
+#' @examples load_cabi_data("2014")
 load_cabi_data <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
         url <- str_glue("https://s3.amazonaws.com/capitalbikeshare-data/{period}-capitalbikeshare-tripdata.zip")
         download.file(url, destfile = str_glue(paste0(zip_dir,"{period}-cabi-tripdata.zip")))
@@ -39,42 +50,103 @@ load_cabi_data <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
 }
 ```
 
-## Plot 1: Yearly changes
+# Plot 1: Ridership changes
 
-The goal of this plot is to simply see how ridership has changed throughout the last 10 years. The output graph is relatively simple, but in order to obtain the data, several data sources had to be wrangled together. 
+The goal of this plot is to simply see how ridership has changed throughout the years since Capital Bikeshare got started. 
+
+### Obtaining the data
+The challenge with this was to standardize the way in which the data came in, since different periods have different ways to save the data in the zip files. The main difference was that starting in 2018, the data is saved by month instead of by year.  
 
 ```{r}
-# make function that wraps around the load_cabi_data function. I want to get a total of all monthly rides since 2012, but the data past 2018 requires a different setup
-
-# for 2018+
-# first make list of periods to get data from for each year
-# loop through these periods to get data, and then simply obtain the count for this
-# Do a pause between each loop
-# add all these counts to a final tibble
-monthly_rides_2018 <- tibble(year = 2018, month = 1:12, counts = integer(12)) %>% 
-        mutate(str_month = str_pad(month, 2, pad = "0")) %>% 
-        mutate(period = paste0(year, str_month)) %>% 
-        select(-str_month)
-
-for (i in monthly_rides_2018$period) {
-        data <- load_cabi_data(i)
-        monthly_rides_2018 <- monthly_rides_2018 %>% 
-                mutate(counts = if_else(period == i, nrow(data), counts))
-}
-
-
-# Function to count monthly rides for 2011-2017
-by_month <- function(data, year) {
-        output <- data %>% 
-                janitor::clean_names() %>% 
+#| output: false
+#' Total monthly rides for years prior to 2018
+#'
+#' @param year The year as an int or double, for which monthly aggregate data needs to be obtained
+#'
+#' @return A tibble grouped by month of total monthly rides, with additional columns for the year and the period
+#' @examples monthly_rides_pre2018(2012)
+monthly_rides_pre2018 <- function(year) {
+        output <- load_cabi_data(as.character(year)) %>% 
                 group_by(month = month(start_date)) %>% 
-                summarise(monthly_count = n()) %>% 
+                summarise(counts = n()) %>% 
                 ungroup() %>% 
-                mutate(year = year)
+                mutate(year = year,
+                       str_month = str_pad(month, 2, pad = "0")) %>% 
+                mutate(period = paste0(year, str_month)) %>% 
+                select(year, month, counts, period)
         return(output)
 }
 ```
 
+```{r}
+#| output: false
+#' Total monthly rides for years starting 2018
+#'
+#' @param year The year as an int or double, for which monthly aggregate data needs to be obtained
+#' @param month Optional list of months to use, since some years (namely 2022) are not yet complete
+#'
+#' @return A tibble grouped by month of total monthly rides, with additional columns for the year and the period
+#' @example monthly_rides_post2018(2022, month = 1:9)
+monthly_rides_post2018 <- function(year, month = 1:12) {
+        monthly_data <- tibble(year = year, month = month, counts = integer(1)) %>% 
+                mutate(str_month = str_pad(month, 2, pad = "0")) %>% 
+                mutate(period = paste0(year, str_month)) %>% 
+                select(-str_month)
+        for (i in monthly_data$period) {
+                data <- load_cabi_data(i)
+                monthly_data <- monthly_data %>% 
+                        mutate(counts = if_else(period == i, nrow(data), counts))
+        }
+        return(monthly_data)
+}
+
+```
+
+
+### Putting the data together
+The code below uses the previous functions to generate data for corresponding periods and then aggregates them together to get a single tibble with data from 2010 to 2022
+```{r}
+#| output: false
+monthly_2010_2017 <- bind_rows(map(2010:2017, monthly_rides_pre2018))
+monthly_2018_2021 <- bind_rows(map(2018:2021, monthly_rides_post2018))
+monthly_2022 <- monthly_rides_post2018(2022, month = 1:9)
+
+monthly_data <- bind_rows(monthly_2010_2017, monthly_2018_2021, monthly_2022) 
+```
+
+The code below generates a monthly average by year in order to see the yearly trends more easily in the final plot
+```{r}
+#| output: false
+monthly_average_by_year <- monthly_data %>% 
+        group_by(year) %>% 
+        summarise(avg = mean(counts)) %>% 
+        ungroup()
+```
+
+### Generating the plot
+The code below generates the final plot
+```{r}
+ggplot() + 
+        geom_col(data = monthly_data, mapping = aes(x=ym(period), y=counts, colour = month)) +
+        geom_line(data = monthly_average_by_year, 
+                  mapping = aes(x = ym(paste0(year,"07")), y = avg), linetype = 5) +
+        geom_point(data = monthly_average_by_year, 
+                  mapping = aes(x = ym(paste0(year,"07")), y = avg), 
+                  shape = 18, 
+                  size = 2, 
+                  colour = "aquamarine3") +
+        theme_minimal() + 
+        xlab("Year") + ylab("Trips per month") +
+        scale_y_continuous(labels = comma) +
+        scale_x_date(date_breaks = "1 year", date_labels = "%Y") + 
+        labs(title = "Trips per month",
+             subtitle = "With yearly averages of monthly trips",
+             caption = "Data source: Capital Bikeshare")
+        
+```
+
+### Interpretation
+On first impression, the plot shows some trends that are obvious, such as telling us that the winters will have fewer rides, or that ridership has increased since 2010, when there were likely fewer stations and bikes to go around, and residents of Washington did not know about the availability of the Capital Bikeshare program. We can also see the dip in ridership in 2020 as Covid hit and people started staying inside more. Something that is surprising though, is that peak ridership was actually in 2017. 
 
 
 ## Plot 2: Ridership throughout the day
@@ -96,6 +168,49 @@ ggplot(data = minutes) +
 
 #axis label as hour vs minutes
 ```
+
+## Plot 3: User types
+```{r}
+# let's do some data exploration
+testing <- load_cabi_data("202208")
+testing2 <- testing %>% 
+        filter(!is.na(start_station_id)) %>%
+        group_by(station_id = start_station_id) %>% 
+        summarise(num_member = sum(member_casual == "member"),
+                  num_casual = sum(member_casual == "casual")) %>% 
+        ungroup() %>% 
+        mutate(more_user_type = if_else(num_member > num_casual, "member", "casual"))
+
+# have to group by here because even with the same station sometimes the lats and longs changed a bit
+station_data <- testing %>% 
+        filter(!is.na(start_station_id)) %>%
+        select(station_id = start_station_id, 
+               station_name = start_station_name, 
+               lat = start_lat, 
+               lng = start_lng) %>% 
+        group_by(station_id) %>% 
+        summarise(station_name = first(station_name),
+                  lat = first(lat),
+                  lng = first(lng)) %>% 
+        ungroup() 
+
+
+data2 <- testing2 %>% 
+        left_join(station_data, by = "station_id") %>% 
+        st_as_sf(coords = c("lng", "lat"), crs = "EPSG:4269")
+
+dc_map <- states(cb = TRUE, progress_bar = FALSE) %>%
+        filter(STUSPS == "DC")
+
+ggplot() +
+        geom_sf(data = dc_map) +
+        geom_sf(data = data2, 
+                mapping = aes(colour = more_user_type, shape = more_user_type),
+                size = 1.5) +
+        theme_void()
+        
+```
+
 
 
 ## Plot 4: Station usage
