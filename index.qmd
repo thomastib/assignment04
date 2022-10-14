@@ -169,9 +169,15 @@ ggplot() +
 
 On first impression, the plot shows some trends that are obvious, such as telling us that the winters will have fewer rides, or that ridership has increased since 2010, when there were likely fewer stations and bikes to go around, and residents of Washington did not know about the availability of the Capital Bikeshare program. We can also see the dip in ridership in 2020 as Covid hit and people started staying inside more. Something that is surprising though, is that peak ridership was actually in 2017.
 
+\newpage
+
 # Plot 2: Ridership throughout the day
 
+The goal of this plot is to see peak and trough ridership times during an average day. 
+
 ### Obtaining the data
+
+Here we used September 2022 data to count the number of rides for each start time over 24 hours. 
 
 ```{r}
 
@@ -185,6 +191,8 @@ minutes <- data_sept_2022 %>%
 ```
 
 ### Generating the plot
+
+The code below generates the final plot. 
 
 ```{r}
 ggplot(data = minutes) +
@@ -263,8 +271,12 @@ What is interesting about this plot is that member users, the ones who have a su
 
 # Plot 4: Station usage
 
-Top station was NA with 12,950 counts
+The idea of this plot was to understand which stations are used the most across the city.
+
 ### Obtaining the data
+
+To obtain the data it was important to filter out for NA, which accounted for the largest total rides. Stations were then sorted in descending order and the top 10 most used stations were selected. 
+
 ```{r}
 #| output: false
 #| warning: false
@@ -284,6 +296,8 @@ plot_data <- data_sept_2022 %>%
 ```
 
 ### Generating the plot
+
+The code below generates the final plot.
 
 ```{r}
 
