@@ -14,6 +14,8 @@ urlcolor: blue
 
 ```{r}
 #| output: false
+#| warning: false
+
 library(tidyverse)
 library(knitr)
 library(lubridate)
@@ -27,6 +29,8 @@ library(sf)
 The function below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in https://s3.amazonaws.com/capitalbikeshare-data/index.html
 
 ```{r}
+#| warning: false
+
 #' Load cabi data
 #'
 #' @param period The period of time to load data for, as a string. Should match the zip files in the cabi website
@@ -38,6 +42,7 @@ The function below is used to download the data zip files into csvs that are the
 load_cabi_data <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
         url <- str_glue("https://s3.amazonaws.com/capitalbikeshare-data/{period}-capitalbikeshare-tripdata.zip")
         download.file(url, destfile = str_glue(paste0(zip_dir,"{period}-cabi-tripdata.zip")))
+        Sys.sleep(0.5)
         zip_files <- paste0(zip_dir, list.files(zip_dir))
         for (x in zip_files) {
                 unzip(x, exdir = csv_dir)
@@ -60,6 +65,8 @@ The challenge with this was to standardize the way in which the data came in, si
 
 ```{r}
 #| output: false
+#| warning: false
+
 #' Total monthly rides for years prior to 2018
 #'
 #' @param year The year as an int or double, for which monthly aggregate data needs to be obtained
@@ -81,6 +88,7 @@ monthly_rides_pre2018 <- function(year) {
 
 ```{r}
 #| output: false
+#| warning: false
 #' Total monthly rides for years starting 2018
 #'
 #' @param year The year as an int or double, for which monthly aggregate data needs to be obtained
@@ -109,6 +117,7 @@ The code below uses the previous functions to generate data for corresponding pe
 
 ```{r}
 #| output: false
+#| warning: false
 monthly_2010_2017 <- bind_rows(map(2010:2017, monthly_rides_pre2018))
 monthly_2018_2021 <- bind_rows(map(2018:2021, monthly_rides_post2018))
 monthly_2022 <- monthly_rides_post2018(2022, month = 1:9)
@@ -120,6 +129,7 @@ The code below generates a monthly average by year in order to see the yearly tr
 
 ```{r}
 #| output: false
+#| warning: false
 monthly_average_by_year <- monthly_data %>% 
         group_by(year) %>% 
         summarise(avg = mean(counts)) %>% 
@@ -131,6 +141,7 @@ monthly_average_by_year <- monthly_data %>%
 The code below generates the final plot
 
 ```{r}
+#| warning: false
 ggplot() + 
         geom_col(data = monthly_data, mapping = aes(x=ym(period), y=counts, colour = month)) +
         geom_line(data = monthly_average_by_year, 
@@ -152,6 +163,7 @@ ggplot() +
 
 ### Interpretation
 
+
 On first impression, the plot shows some trends that are obvious, such as telling us that the winters will have fewer rides, or that ridership has increased since 2010, when there were likely fewer stations and bikes to go around, and residents of Washington did not know about the availability of the Capital Bikeshare program. We can also see the dip in ridership in 2020 as Covid hit and people started staying inside more. Something that is surprising though, is that peak ridership was actually in 2017.
 
 
@@ -162,6 +174,7 @@ On first impression, the plot shows some trends that are obvious, such as tellin
 ```{r}
 
 data_sept_2022 <- load_cabi_data("202209") %>% janitor::clean_names()
+
 minutes <- data_sept_2022 %>%
         group_by(hour = hour(started_at), minute = minute(started_at)) %>% 
         summarise(count = n()) %>% 
@@ -183,61 +196,66 @@ ggplot(data = minutes) +
 
 ```
 
-### Interpretation
 
-This graph is relatively unsurprising in highlighting very low usage of bikes during the night, meaning between 10pm and 7am. Bike usage picks up considerably circa 7am, corresponding to human flows to work places or places of study. Usage then remains quite steady throughout the day until around 4pm when it starts to pick up significantly for rush hour. Peak times are without a doubt between 4pm and 7pm. Implications for policy may be ensuring any daily bike maintenance happens before these times. 
+\newpage
+# Plot 3: User types
+The goal of this plot is to find how the type of user differs geographically throughout the city. In order to do this, we use the start station location and compare it with a map of Washington DC, colouring it based on which type of user uses it most. This analysis uses the data from August 2022.
 
-
-
-## Plot 3: User types
-
+### Obtaining the data
+We need 2 different datasets here: one for the aggregated data by station, and one that has the geospatial data for DC.
 ```{r}
-# let's do some data exploration
-testing <- load_cabi_data("202208")
-testing2 <- testing %>% 
+#| output: false
+#| warning: false
+station_data <- load_cabi_data("202208") %>% 
         filter(!is.na(start_station_id)) %>%
         group_by(station_id = start_station_id) %>% 
         summarise(num_member = sum(member_casual == "member"),
-                  num_casual = sum(member_casual == "casual")) %>% 
+                  num_casual = sum(member_casual == "casual"),
+                  station_name = first(start_station_name),
+                  lat = first(start_lat),
+                  long = first(start_lng)) %>% 
         ungroup() %>% 
-        mutate(more_user_type = if_else(num_member > num_casual, "member", "casual"))
-
-# have to group by here because even with the same station sometimes the lats and longs changed a bit
-station_data <- testing %>% 
-        filter(!is.na(start_station_id)) %>%
-        select(station_id = start_station_id, 
-               station_name = start_station_name, 
-               lat = start_lat, 
-               lng = start_lng) %>% 
-        group_by(station_id) %>% 
-        summarise(station_name = first(station_name),
-                  lat = first(lat),
-                  lng = first(lng)) %>% 
-        ungroup() 
-
-
-data2 <- testing2 %>% 
-        left_join(station_data, by = "station_id") %>% 
-        st_as_sf(coords = c("lng", "lat"), crs = "EPSG:4269")
+        mutate(more_user_type = if_else(num_member > num_casual, "member", "casual")) %>% 
+        st_as_sf(coords = c("long", "lat"), crs = "EPSG:4269")
 
 dc_map <- states(cb = TRUE, progress_bar = FALSE) %>%
         filter(STUSPS == "DC")
+```
 
+
+### Generating the plot
+The code below generates the final plot
+```{r}
+#| warning: false
 ggplot() +
         geom_sf(data = dc_map) +
-        geom_sf(data = data2, 
+        geom_sf(data = station_data, 
                 mapping = aes(colour = more_user_type, shape = more_user_type),
                 size = 1.5) +
-        theme_void()
+        theme_void() + 
+        scale_shape_discrete(name = "User Type",
+                              breaks = c("casual", "member"),
+                              labels = c("Casual user", "CaBi member")) +
+        scale_colour_discrete(name = "User Type",
+                              breaks = c("casual", "member"),
+                              labels = c("Casual user", "CaBi member")) +
+        labs(title = "Stations in Washington DC by user type",
+             subtitle = "With data from August 2022",
+             caption = "Data sources: Capital Bikeshare, Tigris package")
         
 ```
 
-## Plot 4: Station usage
 
-### Obtaining the data
+### Interpretation
+What is interesting about this plot is that member users, the ones who have a subscription to Capital Bikeshares and don't just pick up bikes on demand, make up the bulk of users in the downtown areas. It is only on the peripheries that casual users make up the majority of users. Maybe this has to do with how long the stations have been there. As CaBi expands outward, it takes a while for users to start using the bikes more consistently and seeing the value of getting a membership. Further analysis could also be done to see how often tourists use this service. If they are casual members then the downtown areas should see a few more casual-dominated stations, and this does seem to be the case around the Mall. 
+
+\newpage
+# Plot 4: Station usage
+Top station was NA with 12,950 counts
 
 ```{r}
-
+#| output: false
+#| warning: false
 #data_sept_2022 <- load_cabi_data("202209") %>% janitor::clean_names()
 station_counts <- data_sept_2022 %>%
   filter(!is.na(start_station_id)) %>% 
@@ -263,6 +281,7 @@ ggplot(data = plot_data) +
        title = "Top Ten Most Used Stations",
        subtitle = "September 2022",
        caption = "Data source: Capital Bikeshare")
+
 
 ```
 
