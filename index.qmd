@@ -24,8 +24,8 @@ library(tigris)
 library(sf)
 ```
 
-
 The function below is used to download the data zip files into csvs that are then ingested by R. Make sure that the period input is equivalent to the ones listed in https://s3.amazonaws.com/capitalbikeshare-data/index.html
+
 ```{r}
 #' Load cabi data
 #'
@@ -52,10 +52,11 @@ load_cabi_data <- function(period, zip_dir = "data/", csv_dir = "csvs/") {
 
 # Plot 1: Ridership changes
 
-The goal of this plot is to simply see how ridership has changed throughout the years since Capital Bikeshare got started. 
+The goal of this plot is to simply see how ridership has changed throughout the years since Capital Bikeshare got started.
 
 ### Obtaining the data
-The challenge with this was to standardize the way in which the data came in, since different periods have different ways to save the data in the zip files. The main difference was that starting in 2018, the data is saved by month instead of by year.  
+
+The challenge with this was to standardize the way in which the data came in, since different periods have different ways to save the data in the zip files. The main difference was that starting in 2018, the data is saved by month instead of by year.
 
 ```{r}
 #| output: false
@@ -102,9 +103,10 @@ monthly_rides_post2018 <- function(year, month = 1:12) {
 
 ```
 
-
 ### Putting the data together
+
 The code below uses the previous functions to generate data for corresponding periods and then aggregates them together to get a single tibble with data from 2010 to 2022
+
 ```{r}
 #| output: false
 monthly_2010_2017 <- bind_rows(map(2010:2017, monthly_rides_pre2018))
@@ -115,6 +117,7 @@ monthly_data <- bind_rows(monthly_2010_2017, monthly_2018_2021, monthly_2022)
 ```
 
 The code below generates a monthly average by year in order to see the yearly trends more easily in the final plot
+
 ```{r}
 #| output: false
 monthly_average_by_year <- monthly_data %>% 
@@ -124,7 +127,9 @@ monthly_average_by_year <- monthly_data %>%
 ```
 
 ### Generating the plot
+
 The code below generates the final plot
+
 ```{r}
 ggplot() + 
         geom_col(data = monthly_data, mapping = aes(x=ym(period), y=counts, colour = month)) +
@@ -146,30 +151,46 @@ ggplot() +
 ```
 
 ### Interpretation
-On first impression, the plot shows some trends that are obvious, such as telling us that the winters will have fewer rides, or that ridership has increased since 2010, when there were likely fewer stations and bikes to go around, and residents of Washington did not know about the availability of the Capital Bikeshare program. We can also see the dip in ridership in 2020 as Covid hit and people started staying inside more. Something that is surprising though, is that peak ridership was actually in 2017. 
+
+On first impression, the plot shows some trends that are obvious, such as telling us that the winters will have fewer rides, or that ridership has increased since 2010, when there were likely fewer stations and bikes to go around, and residents of Washington did not know about the availability of the Capital Bikeshare program. We can also see the dip in ridership in 2020 as Covid hit and people started staying inside more. Something that is surprising though, is that peak ridership was actually in 2017.
 
 
-## Plot 2: Ridership throughout the day
+# Plot 2: Ridership throughout the day
+
+### Obtaining the data
 
 ```{r}
 
-#data_sept_2022 <- load_cabi_data("202209") %>% janitor::clean_names()
+data_sept_2022 <- load_cabi_data("202209") %>% janitor::clean_names()
 minutes <- data_sept_2022 %>%
         group_by(hour = hour(started_at), minute = minute(started_at)) %>% 
         summarise(count = n()) %>% 
         ungroup() %>% 
         mutate(hour_minute = 60*hour+minute)
-
-ggplot(data = minutes) +
-        geom_col(mapping = aes(x = hour_minute, y = count), 
-                 colour = "red") +
-        coord_polar() + 
-        labs(title = "Ridership throughout the day")
-
-#axis label as hour vs minutes
 ```
 
+### Generating the plot
+
+```{r}
+ggplot(data = minutes) +
+        geom_col(mapping = aes(x = hour, y = count), 
+                 colour = "red") +
+        coord_polar() + 
+        labs(x= "Hours", y= "Count",
+             title = "Bikes used over the course of 24 hours", 
+             subtitle = "In September 2022",
+             caption = "Data source: Capital Bikeshare")
+
+```
+
+### Interpretation
+
+This graph is relatively unsurprising in highlighting very low usage of bikes during the night, meaning between 10pm and 7am. Bike usage picks up considerably circa 7am, corresponding to human flows to work places or places of study. Usage then remains quite steady throughout the day until around 4pm when it starts to pick up significantly for rush hour. Peak times are without a doubt between 4pm and 7pm. Implications for policy may be ensuring any daily bike maintenance happens before these times. 
+
+
+
 ## Plot 3: User types
+
 ```{r}
 # let's do some data exploration
 testing <- load_cabi_data("202208")
@@ -211,10 +232,9 @@ ggplot() +
         
 ```
 
-
-
 ## Plot 4: Station usage
-Top station was NA with 12,950 counts
+
+### Obtaining the data
 
 ```{r}
 
@@ -227,17 +247,26 @@ station_counts <- data_sept_2022 %>%
   slice(1:10) %>%
   ungroup() 
 
-labels <- data_sept_2022 %>% 
-  filter(!is.na(start_station_id)) %>% 
-  select(station_id = start_station_id, station_name = start_station_name) %>% 
-  unique()
-
-station_counts <- inner_join(station_counts, labels, by = "station_id")
-
-ggplot(data = station_counts) +
-  geom_col(mapping = aes(x = count, y = station_name), orientation = "y", fill ="red") +
-  scale_y_discrete(limits = station_counts$station_name) +
-  labs(title = "Most used stations") +
+top_ten <- station_counts$station_id
+plot_data <- data_sept_2022 %>%
+  filter(start_station_id == top_ten)
 
 ```
 
+### Generating the plot
+
+```{r}
+
+ggplot(data = plot_data) +
+  geom_bar(mapping = aes(y=start_station_name, fill=rideable_type)) +
+  labs(x= "Count", y="Station Name",
+       title = "Top Ten Most Used Stations",
+       subtitle = "September 2022",
+       caption = "Data source: Capital Bikeshare")
+
+```
+
+### Interpretation 
+
+Unsurprisingly, the top Capital Bikeshare stations correspond to areas of strategic importance in DC - transport hubs (Union Station), retail streets (M St), office buildings (Dupont Circle), and entertainment areas (14th St). It would be worth investigating whether these stations are consistently empty, in which case it might be worthwhile to add bikes to these particular locations. 
+Interestingly, before filtering, the top station was NA with 12,950 counts. This, along with the lack of clarity around the meaning of docked bikes, poses questions about Capital Bikeshare's data set. 
