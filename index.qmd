@@ -196,6 +196,10 @@ ggplot(data = minutes) +
 
 ```
 
+### Intepretation 
+
+This graph is relatively unsurprising in highlighting very low usage of bikes during the night, meaning between 10pm and 7am. Bike usage picks up considerably circa 7am, corresponding to human flows to work places or places of study. Usage then remains quite steady throughout the day until around 4pm when it starts to pick up significantly for rush hour. Peak times are without a doubt between 4pm and 7pm. Implications for policy may be ensuring any daily bike maintenance happens before these times. 
+
 
 \newpage
 # Plot 3: User types
@@ -276,9 +280,13 @@ plot_data <- data_sept_2022 %>%
 ```{r}
 
 ggplot(data = plot_data) +
-  geom_bar(mapping = aes(y=start_station_name, fill=rideable_type)) +
-  labs(x= "Count", y="Station Name",
-       title = "Top Ten Most Used Stations",
+  geom_bar(mapping = aes(y=start_station_name, fill=rideable_type),
+           colour = "black") +
+   scale_fill_discrete(name = "Bike Type",
+                              breaks = c("classic_bike", "docked_bike", "electric_bike"),
+                              labels = c("Classic", "Docked", "Electric")) +
+  xlab("Count") + ylab("Station Name") +
+  labs(title = "Top Ten Most Used Stations",
        subtitle = "September 2022",
        caption = "Data source: Capital Bikeshare")
 
