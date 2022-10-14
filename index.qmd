@@ -20,6 +20,8 @@ library(lubridate)
 library(purrr)
 library(stringr)
 library(scales)
+library(tigris)
+library(sf)
 ```
 
 
@@ -136,7 +138,7 @@ ggplot() +
         theme_minimal() + 
         xlab("Year") + ylab("Trips per month") +
         scale_y_continuous(labels = comma) +
-        scale_x_date(date_breaks = "1 year", date_labels = "%Y")
+        scale_x_date(date_breaks = "1 year", date_labels = "%Y") + 
         labs(title = "Trips per month",
              subtitle = "With yearly averages of monthly trips",
              caption = "Data source: Capital Bikeshare")
@@ -166,6 +168,49 @@ ggplot(data = minutes) +
 
 #axis label as hour vs minutes
 ```
+
+## Plot 3: User types
+```{r}
+# let's do some data exploration
+testing <- load_cabi_data("202208")
+testing2 <- testing %>% 
+        filter(!is.na(start_station_id)) %>%
+        group_by(station_id = start_station_id) %>% 
+        summarise(num_member = sum(member_casual == "member"),
+                  num_casual = sum(member_casual == "casual")) %>% 
+        ungroup() %>% 
+        mutate(more_user_type = if_else(num_member > num_casual, "member", "casual"))
+
+# have to group by here because even with the same station sometimes the lats and longs changed a bit
+station_data <- testing %>% 
+        filter(!is.na(start_station_id)) %>%
+        select(station_id = start_station_id, 
+               station_name = start_station_name, 
+               lat = start_lat, 
+               lng = start_lng) %>% 
+        group_by(station_id) %>% 
+        summarise(station_name = first(station_name),
+                  lat = first(lat),
+                  lng = first(lng)) %>% 
+        ungroup() 
+
+
+data2 <- testing2 %>% 
+        left_join(station_data, by = "station_id") %>% 
+        st_as_sf(coords = c("lng", "lat"), crs = "EPSG:4269")
+
+dc_map <- states(cb = TRUE, progress_bar = FALSE) %>%
+        filter(STUSPS == "DC")
+
+ggplot() +
+        geom_sf(data = dc_map) +
+        geom_sf(data = data2, 
+                mapping = aes(colour = more_user_type, shape = more_user_type),
+                size = 1.5) +
+        theme_void()
+        
+```
+
 
 
 ## Plot 4: Station usage
