@@ -6,6 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Juliette Taylor - jmt333, Thomas Tiberghien Alvarez - tt791">
 
 <title>Data Science for Public Policy</title>
 <style>
@@ -2520,7 +2521,7 @@ vertical-align: -.125em;
 
 </header>
 
-<p>The goal of this analysis is to generate visualizations regarding the usage of the Capital Bikeshare (CaBi) system in Washington DC and draw some conclusions that can be useful in generating policy changes. The data comes from CaBi’s own <a href="https://ride.capitalbikeshare.com/system-data">System data</a></p>
+<p>The goal of this analysis is to generate visualizations regarding the usage of the Capital Bikeshare (CaBi) system in Washington DC and draw some conclusions that can be useful in generating policy changes. The data comes from CaBi’s own <a href="https://ride.capitalbikeshare.com/system-data">System data</a>.</p>
 <section id="setup" class="level3">
 <h3 class="anchored" data-anchor-id="setup">Setup</h3>
 <div class="cell">
@@ -2652,12 +2653,15 @@ vertical-align: -.125em;
 <section id="interpretation" class="level3">
 <h3 class="anchored" data-anchor-id="interpretation">Interpretation</h3>
 <p>On first impression, the plot shows some trends that are obvious, such as telling us that the winters will have fewer rides, or that ridership has increased since 2010, when there were likely fewer stations and bikes to go around, and residents of Washington did not know about the availability of the Capital Bikeshare program. We can also see the dip in ridership in 2020 as Covid hit and people started staying inside more. Something that is surprising though, is that peak ridership was actually in 2017.</p>
+<div style="page-break-after: always;"></div>
 </section>
 </section>
 <section id="plot-2-ridership-throughout-the-day" class="level1">
 <h1>Plot 2: Ridership throughout the day</h1>
+<p>The goal of this plot is to see peak and trough ridership times during an average day.</p>
 <section id="obtaining-the-data-1" class="level3">
 <h3 class="anchored" data-anchor-id="obtaining-the-data-1">Obtaining the data</h3>
+<p>Here we used September 2022 data to count the number of rides for each start time over 24 hours.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a>data_sept_2022 <span class="ot">&lt;-</span> <span class="fu">load_cabi_data</span>(<span class="st">&quot;202209&quot;</span>) <span class="sc">%&gt;%</span> janitor<span class="sc">::</span><span class="fu">clean_names</span>()</span>
 <span id="cb8-2"><a href="#cb8-2"></a></span>
@@ -2670,6 +2674,7 @@ vertical-align: -.125em;
 </section>
 <section id="generating-the-plot-1" class="level3">
 <h3 class="anchored" data-anchor-id="generating-the-plot-1">Generating the plot</h3>
+<p>The code below generates the final plot.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> minutes) <span class="sc">+</span></span>
 <span id="cb9-2"><a href="#cb9-2"></a>        <span class="fu">geom_col</span>(<span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">x =</span> hour, <span class="at">y =</span> count), </span>
@@ -2745,7 +2750,10 @@ vertical-align: -.125em;
 </section>
 <section id="plot-4-station-usage" class="level1">
 <h1>Plot 4: Station usage</h1>
-<p>Top station was NA with 12,950 counts</p>
+<p>The idea of this plot was to understand which stations are used the most across the city.</p>
+<section id="obtaining-the-data-3" class="level3">
+<h3 class="anchored" data-anchor-id="obtaining-the-data-3">Obtaining the data</h3>
+<p>To obtain the data it was important to filter out for NA, which accounted for the largest total rides. Stations were then sorted in descending order and the top 10 most used stations were selected.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="co">#data_sept_2022 &lt;- load_cabi_data(&quot;202209&quot;) %&gt;% janitor::clean_names()</span></span>
 <span id="cb12-2"><a href="#cb12-2"></a>station_counts <span class="ot">&lt;-</span> data_sept_2022 <span class="sc">%&gt;%</span></span>
@@ -2760,8 +2768,10 @@ vertical-align: -.125em;
 <span id="cb12-11"><a href="#cb12-11"></a>plot_data <span class="ot">&lt;-</span> data_sept_2022 <span class="sc">%&gt;%</span></span>
 <span id="cb12-12"><a href="#cb12-12"></a>  <span class="fu">filter</span>(start_station_id <span class="sc">==</span> top_ten)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+</section>
 <section id="generating-the-plot-3" class="level3">
 <h3 class="anchored" data-anchor-id="generating-the-plot-3">Generating the plot</h3>
+<p>The code below generates the final plot.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode numberSource r number-lines code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a><span class="fu">ggplot</span>(<span class="at">data =</span> plot_data) <span class="sc">+</span></span>
 <span id="cb13-2"><a href="#cb13-2"></a>  <span class="fu">geom_bar</span>(<span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">y=</span>start_station_name, <span class="at">fill=</span>rideable_type),</span>
